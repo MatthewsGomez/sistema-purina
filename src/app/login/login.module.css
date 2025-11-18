@@ -1,0 +1,138 @@
+.login {
+  padding: 3rem;
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 2rem;
+  backdrop-filter: blur(15px);
+  font-size: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem; 
+  width: 100%;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; 
+  width: 100%;
+  max-width: 300px;
+}
+
+.label {
+  font-weight: 500;
+  color: black; 
+  text-align: left;
+  margin-bottom: 0.25rem;
+  margin-top: 0.40rem;
+}
+
+.input {
+  background-color: white;
+  padding: 0.75rem; 
+  border: 1px solid #ddd;
+  border-radius: 40px;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.input::placeholder {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.button {
+  background: #0070f3;
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 1rem; 
+}
+
+.button:hover:not(:disabled) {
+  background: #0051b3;
+}
+
+.button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #ff4444;
+  font-size: 0.9rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.testInfo {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 112, 243, 0.1);
+  border-radius: 8px;
+  border: 1px solid #0070f3;
+  font-size: 0.8rem;
+  text-align: left;
+  width: 100%;
+  max-width: 300px;
+}
+
+.testInfo p {
+  margin: 0.25rem 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login {
+    background: #1a1a1a;
+    color: #ededed;
+  }
+
+  .label {
+    color: #ededed;
+  }
+
+  .input {
+    background: #333;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .input::placeholder {
+    color: #bbb;
+  }
+
+  .button {
+    background: #0090ff;
+  }
+
+  .button:hover:not(:disabled) {
+    background: #0070cc;
+  }
+
+  .testInfo {
+    background: rgba(0, 144, 255, 0.1);
+    border-color: #0090ff;
+  }
+}
