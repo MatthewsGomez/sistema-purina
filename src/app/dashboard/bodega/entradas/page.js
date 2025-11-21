@@ -15,7 +15,10 @@ function EntradasContent() {
   const [entradas, setEntradas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const [formData, setFormData] = useState({
     producto_id: '',
@@ -54,18 +57,158 @@ function EntradasContent() {
     }
   };
 
+  // Validación del formulario
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.producto_id) {
+      errors.producto_id = 'Debe seleccionar un producto';
+    }
+
+    if (!formData.cantidad || formData.cantidad === '') {
+      errors.cantidad = 'La cantidad es requerida';
+    } else if (parseInt(formData.cantidad) <= 0) {
+      errors.cantidad = 'La cantidad debe ser mayor a 0';
+    }
+
+    if (!formData.precio_unitario || formData.precio_unitario === '') {
+      errors.precio_unitario = 'El precio unitario es requerido';
+    } else if (parseFloat(formData.precio_unitario) < 0) {
+      errors.precio_unitario = 'El precio no puede ser negativo';
+    }
+
+    if (!formData.fecha_entrada) {
+      errors.fecha_entrada = 'La fecha de entrada es requerida';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Limpiar errores de validación cuando el usuario escribe
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    if (name === 'producto_id') {
+      const producto = productos.find(p => p.id === parseInt(value));
+      setSelectedProduct(producto);
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        precio_unitario: producto && producto.precio_compra ? producto.precio_compra.toString() : ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // Función para exportar a PDF
+  const exportarPDF = async () => {
+    setExportingPDF(true);
+    
+    try {
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
+
+      const doc = new jsPDF();
+
+      // Título
+      doc.setFontSize(18);
+      doc.text('Reporte de Entradas de Inventario', 14, 20);
+
+      // Información del usuario y fecha
+      doc.setFontSize(10);
+      doc.text(`Generado por: ${user?.nombre}`, 14, 30);
+      doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 14, 36);
+      doc.text(`Total de registros: ${entradas.length}`, 14, 42);
+
+      // Preparar datos para la tabla
+      const tableData = entradas.map((entrada) => [
+        new Date(entrada.fecha_entrada).toLocaleDateString('es-ES'),
+        `${entrada.producto_nombre}\n${entrada.producto_marca}`,
+        entrada.proveedor_nombre || 'N/A',
+        entrada.cantidad.toString(),
+        `$${parseFloat(entrada.precio_unitario).toFixed(2)}`,
+        entrada.numero_lote || 'N/A'
+      ]);
+
+      // Generar tabla
+      autoTable(doc, {
+        head: [['Fecha', 'Producto', 'Proveedor', 'Cantidad', 'Precio Unit.', 'Lote']],
+        body: tableData,
+        startY: 50,
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [0, 112, 243],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 35 },
+        },
+      });
+
+      // Pie de página
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Página ${i} de ${pageCount}`,
+          doc.internal.pageSize.getWidth() / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Descargar el PDF
+      const fileName = `entradas_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      setMessage({ type: 'success', text: 'PDF generado exitosamente' });
+      setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 3000);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      setMessage({ type: 'error', text: 'Error al generar el PDF' });
+    } finally {
+      setExportingPDF(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage({ type: '', text: '' });
+
+    // Validar formulario antes de enviar
+    if (!validateForm()) {
+      setSubmitting(false);
+      setMessage({ type: 'error', text: 'Por favor corrige los errores en el formulario' });
+      return;
+    }
 
     try {
       const response = await fetch('/api/bodega/entradas', {
@@ -98,6 +241,8 @@ function EntradasContent() {
           recibido_por: '',
           observaciones: ''
         });
+        setSelectedProduct(null);
+        setValidationErrors({});
 
         // Recargar datos
         await cargarDatos();
@@ -174,7 +319,7 @@ function EntradasContent() {
                     value={formData.producto_id}
                     onChange={handleChange}
                     required
-                    className={styles.select}
+                    className={`${styles.select} ${validationErrors.producto_id ? styles.inputError : ''}`}
                   >
                     <option value="">Seleccionar producto</option>
                     {productos.map(producto => (
@@ -183,6 +328,9 @@ function EntradasContent() {
                       </option>
                     ))}
                   </select>
+                  {validationErrors.producto_id && (
+                    <span className={styles.errorText}>{validationErrors.producto_id}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -204,6 +352,15 @@ function EntradasContent() {
                 </div>
               </div>
 
+              {selectedProduct && (
+                <div className={styles.stockInfo}>
+                  <p>
+                    <strong>Stock actual:</strong> {selectedProduct.stock_actual} unidades | 
+                    <strong> Precio de compra sugerido:</strong> ${parseFloat(selectedProduct.precio_compra).toFixed(2)}
+                  </p>
+                </div>
+              )}
+
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label htmlFor="cantidad">Cantidad *</label>
@@ -215,9 +372,12 @@ function EntradasContent() {
                     onChange={handleChange}
                     required
                     min="1"
-                    className={styles.input}
+                    className={`${styles.input} ${validationErrors.cantidad ? styles.inputError : ''}`}
                     placeholder="Ingrese cantidad"
                   />
+                  {validationErrors.cantidad && (
+                    <span className={styles.errorText}>{validationErrors.cantidad}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -231,9 +391,17 @@ function EntradasContent() {
                     required
                     min="0"
                     step="0.01"
-                    className={styles.input}
+                    className={`${styles.input} ${validationErrors.precio_unitario ? styles.inputError : ''}`}
                     placeholder="0.00"
                   />
+                  {selectedProduct && (
+                    <small className={styles.helpText}>
+                      Precio sugerido: ${parseFloat(selectedProduct.precio_compra).toFixed(2)}
+                    </small>
+                  )}
+                  {validationErrors.precio_unitario && (
+                    <span className={styles.errorText}>{validationErrors.precio_unitario}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -260,8 +428,11 @@ function EntradasContent() {
                     value={formData.fecha_entrada}
                     onChange={handleChange}
                     required
-                    className={styles.input}
+                    className={`${styles.input} ${validationErrors.fecha_entrada ? styles.inputError : ''}`}
                   />
+                  {validationErrors.fecha_entrada && (
+                    <span className={styles.errorText}>{validationErrors.fecha_entrada}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -325,7 +496,16 @@ function EntradasContent() {
 
         <div className={styles.historySection}>
           <div className={styles.card}>
-            <h2>📋 Entradas Recientes</h2>
+            <div className={styles.tableHeader}>
+              <h2>📋 Entradas Recientes</h2>
+              <button 
+                onClick={exportarPDF} 
+                disabled={exportingPDF || entradas.length === 0}
+                className={styles.pdfButton}
+              >
+                {exportingPDF ? '⏳ Generando...' : '📄 Descargar PDF'}
+              </button>
+            </div>
             {entradas.length > 0 ? (
               <div className={styles.tableContainer}>
                 <table className={styles.table}>

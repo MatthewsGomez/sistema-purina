@@ -1,3 +1,5 @@
+/* src/app/dashboard/bodega/entradas/entradas.module.css */
+
 .container {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -132,6 +134,49 @@
   font-size: 1.5rem;
 }
 
+/* Header de la tabla con botón PDF */
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tableHeader h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.pdfButton {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pdfButton:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.pdfButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .messageSuccess {
   background: #d4edda;
   color: #155724;
@@ -244,12 +289,11 @@
   overflow-x: auto;
 }
 
-/* Asegurar que todo el texto de la tabla sea opaco y tenga buen contraste */
 .table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
-  color: #333; /* Color oscuro para todo el texto de la tabla */
+  color: #333;
 }
 
 .table th {
@@ -257,7 +301,7 @@
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: #333; /* Color oscuro para headers */
+  color: #333;
   border-bottom: 2px solid #e0e0e0;
   font-size: 0.9rem;
 }
@@ -288,31 +332,13 @@
 }
 
 .badge {
+  background: #0070f3;
+  color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.85rem;
   display: inline-block;
-}
-
-.badgeVenta {
-  background: #d4edda;
-  color: #155724;
-}
-
-.badgeConsumo {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.badgeAjuste {
-  background: #d1ecf1;
-  color: #0c5460;
-}
-
-.badgeDanado {
-  background: #f8d7da;
-  color: #721c24;
 }
 
 .emptyState {
@@ -340,18 +366,6 @@
   color: #333;
 }
 
-/* Responsive */
-@media (max-width: 1200px) {
-  .main {
-    flex-direction: column;
-  }
-
-  .formSection,
-  .historySection {
-    min-width: 100%;
-  }
-}
-
 .inputError {
   border-color: #dc3545 !important;
   background-color: #fff8f8;
@@ -369,6 +383,18 @@
   font-size: 0.8rem;
   margin-top: 0.25rem;
   font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .main {
+    flex-direction: column;
+  }
+
+  .formSection,
+  .historySection {
+    min-width: 100%;
+  }
 }
 
 @media (max-width: 768px) {
@@ -401,6 +427,16 @@
   .buttonPrimary,
   .buttonSecondary {
     width: 100%;
+  }
+
+  .tableHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pdfButton {
+    width: 100%;
+    justify-content: center;
   }
 
   .table {

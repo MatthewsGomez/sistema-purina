@@ -1,3 +1,4 @@
+// src/app/api/recepcionista/route.js
 import { connectDB } from '@/app/lib/db';
 
 // GET - Obtener productos y datos para el formulario de salidas

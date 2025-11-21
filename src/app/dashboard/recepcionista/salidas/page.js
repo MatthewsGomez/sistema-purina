@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import styles from './salidas.module.css';
 import { useAuth } from '@/app/context/AuthContext';
 import { ProtectedRoute } from '@/app/components/ProtectedRoute';
+import dynamic from 'next/dynamic';
 
 function SalidasContent() {
   const router = useRouter();
@@ -15,6 +16,7 @@ function SalidasContent() {
   const [salidas, setSalidas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
@@ -55,16 +57,13 @@ function SalidasContent() {
     }
   };
 
-  // Función para validar el formulario
   const validateForm = () => {
     const errors = {};
 
-    // Validar producto seleccionado
     if (!formData.producto_id) {
       errors.producto_id = 'Debe seleccionar un producto';
     }
 
-    // Validar cantidad
     if (!formData.cantidad || formData.cantidad === '') {
       errors.cantidad = 'La cantidad es requerida';
     } else if (parseInt(formData.cantidad) <= 0) {
@@ -73,12 +72,10 @@ function SalidasContent() {
       errors.cantidad = `Stock insuficiente. Solo hay ${selectedProduct.stock_actual} unidades disponibles`;
     }
 
-    // Validar fecha
     if (!formData.fecha_salida) {
       errors.fecha_salida = 'La fecha de salida es requerida';
     }
 
-    // Validar tipo de salida
     if (!formData.tipo_salida) {
       errors.tipo_salida = 'El tipo de salida es requerido';
     }
@@ -90,7 +87,6 @@ function SalidasContent() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Limpiar errores de validación cuando el usuario escribe
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
         ...prev,
@@ -101,14 +97,12 @@ function SalidasContent() {
     if (name === 'producto_id') {
       const producto = productos.find(p => p.id === parseInt(value));
       setSelectedProduct(producto);
-      // Establecer el precio_unitario con el precio_venta del producto por defecto
       setFormData(prev => ({
         ...prev,
         [name]: value,
         precio_unitario: producto ? producto.precio_venta : ''
       }));
     } else if (name === 'cantidad') {
-      // Validar cantidad en tiempo real
       if (selectedProduct && value && parseInt(value) > selectedProduct.stock_actual) {
         setValidationErrors(prev => ({
           ...prev,
@@ -132,13 +126,27 @@ function SalidasContent() {
     }
   };
 
-  // Función para manejar cambios específicos en el precio unitario
   const handlePrecioChange = (e) => {
     const { value } = e.target;
     setFormData(prev => ({
       ...prev,
       precio_unitario: value
     }));
+  };
+
+  const getTipoSalidaText = (tipo) => {
+    switch (tipo) {
+      case 'venta':
+        return 'Venta';
+      case 'consumo_interno':
+        return 'Consumo Interno';
+      case 'ajuste':
+        return 'Ajuste';
+      case 'danado':
+        return 'Dañado';
+      default:
+        return tipo;
+    }
   };
 
   const getTipoSalidaBadge = (tipo) => {
@@ -156,12 +164,98 @@ function SalidasContent() {
     }
   };
 
+  // Función para exportar a PDF
+const exportarPDF = async () => {
+  setExportingPDF(true);
+  
+  try {
+    // Importar jsPDF y autoTable correctamente
+    const jsPDF = (await import('jspdf')).default;
+    const autoTable = (await import('jspdf-autotable')).default;
+
+    const doc = new jsPDF();
+
+    // Título
+    doc.setFontSize(18);
+    doc.text('Reporte de Salidas de Inventario', 14, 20);
+
+    // Información del usuario y fecha
+    doc.setFontSize(10);
+    doc.text(`Generado por: ${user?.nombre}`, 14, 30);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 14, 36);
+    doc.text(`Total de registros: ${salidas.length}`, 14, 42);
+
+    // Preparar datos para la tabla
+    const tableData = salidas.map((salida) => [
+      new Date(salida.fecha_salida).toLocaleDateString('es-ES'),
+      `${salida.producto_nombre}\n${salida.producto_marca}`,
+      getTipoSalidaText(salida.tipo_salida),
+      salida.cantidad.toString(),
+      salida.precio_unitario ? `$${parseFloat(salida.precio_unitario).toFixed(2)}` : 'N/A',
+      salida.destino || 'N/A'
+    ]);
+
+    // Generar tabla usando autoTable directamente
+    autoTable(doc, {
+      head: [['Fecha', 'Producto', 'Tipo', 'Cantidad', 'Precio Unit.', 'Destino']],
+      body: tableData,
+      startY: 50,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [0, 112, 243],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 35 },
+      },
+    });
+
+    // Pie de página
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(
+        `Página ${i} de ${pageCount}`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+
+    // Descargar el PDF
+    const fileName = `salidas_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+
+    setMessage({ type: 'success', text: 'PDF generado exitosamente' });
+    setTimeout(() => {
+      setMessage({ type: '', text: '' });
+    }, 3000);
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    setMessage({ type: 'error', text: 'Error al generar el PDF' });
+  } finally {
+    setExportingPDF(false);
+  }
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage({ type: '', text: '' });
 
-    // Validar formulario antes de enviar
     if (!validateForm()) {
       setSubmitting(false);
       setMessage({ type: 'error', text: 'Por favor corrige los errores en el formulario' });
@@ -187,7 +281,6 @@ function SalidasContent() {
       if (data.success) {
         setMessage({ type: 'success', text: 'Salida registrada exitosamente' });
         
-        // Limpiar formulario
         setFormData({
           producto_id: '',
           cantidad: '',
@@ -201,10 +294,8 @@ function SalidasContent() {
         setSelectedProduct(null);
         setValidationErrors({});
 
-        // Recargar datos
         await cargarDatos();
 
-        // Limpiar mensaje después de 3 segundos
         setTimeout(() => {
           setMessage({ type: '', text: '' });
         }, 3000);
@@ -445,7 +536,16 @@ function SalidasContent() {
 
         <div className={styles.historySection}>
           <div className={styles.card}>
-            <h2>📋 Salidas Recientes</h2>
+            <div className={styles.tableHeader}>
+              <h2>📋 Salidas Recientes</h2>
+              <button 
+                onClick={exportarPDF} 
+                disabled={exportingPDF || salidas.length === 0}
+                className={styles.pdfButton}
+              >
+                {exportingPDF ? '⏳ Generando...' : '📄 Descargar PDF'}
+              </button>
+            </div>
             {salidas.length > 0 ? (
               <div className={styles.tableContainer}>
                 <table className={styles.table}>

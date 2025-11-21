@@ -8,7 +8,7 @@ export async function GET(request) {
 
     // Obtener productos activos
     const [productos] = await connection.execute(
-      'SELECT id, nombre, marca, stock_actual FROM productos WHERE activo = 1 ORDER BY nombre ASC'
+      'SELECT id, nombre, marca, stock_actual, precio_compra FROM productos WHERE activo = 1 ORDER BY nombre ASC'
     );
 
     // Obtener proveedores activos
